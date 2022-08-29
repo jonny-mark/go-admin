@@ -1,0 +1,92 @@
+'https://plantuml.com/sequence-diagram
+
+@startuml
+title 设备检测UML时序图
+actor User as user
+participant "etc助手" as app #Azure
+participant "基础服务" as baseServer #Azure
+participant "用户服务" as userServer #Azure
+participant "车辆服务" as vehicleServer #Azure
+participant "售后服务" as afterSaleServer #Azure
+participant "黑名单服务" as blackListServer #Azure
+participant "通行服务" as tollServer #Azure
+database "MySQL" as mysql #Peru
+collections "大数据" as bigDataServer #Peru
+==授权==
+autonumber
+user-> app:etc助手小程序(设备检测入口)
+activate app
+app-> app:小程序授权
+app--> user
+deactivate app
+==检测==
+autonumber
+user-> app:我要检测
+activate app
+app-> app:开启蓝牙，连接设备
+app-> app:读取obu的信息(基本信息、用户信息、车辆信息)
+app-> app:读取cpu的信息(基本信息、0015文件、0016文件)
+app-> app:前端给出前端检测结果
+app-> baseServer:提交检测数据包
+baseServer-> baseServer:数据校验
+note right
+防重复提交
+防刷
+防信息伪造
+防数据缺失
+end note
+baseServer-> userServer:数据转发
+activate userServer
+userServer-> mysql:查询并生成检测单
+note right
+防重
+end note
+note left
+后端检测开始
+end note
+autonumber stop
+userServer-> vehicleServer:获取车辆发行信息
+activate vehicleServer
+return
+userServer-> userServer:车辆激活状态检测\n激活标志位检测\ncpu数据检测\nobu数据检测\n质保有效期检测
+userServer-> afterSaleServer:获取售后订单
+activate afterSaleServer
+return
+userServer-> userServer:售后订单检测
+userServer-> blackListServer:获取黑名单信息
+activate blackListServer
+return
+userServer-> userServer:黑名单检测
+userServer-> tollServer:获取欠费信息
+activate tollServer
+return
+userServer-> userServer:通行欠费检测
+autonumber resume
+userServer-> mysql:更新检测单
+note left
+后端检测结束
+end note
+userServer--> baseServer:返回检测结果
+deactivate userServer
+baseServer--> app:包装检测结果\n调整业务推荐\n开启售后入库
+app--> user:检测结束
+deactivate app
+deactivate userServer
+==结果查询==
+autonumber
+user-> app:我的检测
+activate app
+app-> baseServer:历史检测记录
+activate baseServer
+baseServer->bigDataServer:获取通行数据，健康分指标
+activate bigDataServer
+return
+baseServer--> app:包装检测结果\n调整业务推荐
+deactivate baseServer
+app--> user:检测结果
+note right
+用户可以便捷跳转到通行缴费、维修换货、
+延保、二次激活、个人首页等
+end note
+deactivate app
+@enduml
